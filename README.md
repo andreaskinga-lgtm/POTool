@@ -2,7 +2,7 @@
 
 A desktop sample-pack editor built for [Teenage Engineering Pocket Operator](https://teenage.engineering/products/po) hardware. Load up to 16 audio samples onto a virtual pad grid, trim each clip to exactly what you need, preview the full sequence, and export a single merged WAV — ready to load directly onto your Pocket Operator.
 
-![POTool screenshot](docs/screenshot.png)
+<img src="docs/screenshot.png" alt="POTool screenshot" width="400" />
 
 ---
 
