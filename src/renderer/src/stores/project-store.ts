@@ -37,6 +37,8 @@ interface ProjectStore {
   setCurrentPlayingPad: (index: number | null) => void
   setImportMode: (mode: ImportMode | null, targetPad?: number | null) => void
   setCountInEnabled: (enabled: boolean) => void
+  lofiEnabled: boolean
+  setLofiEnabled: (enabled: boolean) => void
   setProjectName: (name: string) => void
   setProjectPath: (path: string | null) => void
   clearAll: () => void
@@ -56,6 +58,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   importMode: null,
   importTargetPad: null,
   countInEnabled: false,
+  lofiEnabled: false,
 
   totalDuration: () => {
     const { pads } = get()
@@ -129,6 +132,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     }),
 
   setCountInEnabled: (enabled) => set({ countInEnabled: enabled }),
+  setLofiEnabled: (enabled) => set({ lofiEnabled: enabled }),
   setProjectName: (name) => set({ projectName: name }),
   setProjectPath: (path) => set({ projectPath: path }),
 

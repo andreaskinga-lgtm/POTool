@@ -59,6 +59,7 @@ export function PadGrid(): React.JSX.Element {
   const setPad = useProjectStore((s) => s.setPad)
   const removePad = useProjectStore((s) => s.removePad)
   const swapPads = useProjectStore((s) => s.swapPads)
+  const lofiEnabled = useProjectStore((s) => s.lofiEnabled)
 
   const [dragSourceIndex, setDragSourceIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -68,13 +69,13 @@ export function PadGrid(): React.JSX.Element {
     (index: number): void => {
       const pad = pads[index]
       if (pad) {
-        playBuffer(pad.audioBuffer, pad.inPoint, pad.outPoint, pad.volume ?? 1.0)
+        playBuffer(pad.audioBuffer, pad.inPoint, pad.outPoint, pad.volume ?? 1.0, lofiEnabled)
         selectPad(index)
       } else {
         setImportMode('single', index)
       }
     },
-    [pads, selectPad, setImportMode]
+    [pads, selectPad, setImportMode, lofiEnabled]
   )
 
   const handleDragStart = (e: React.DragEvent, index: number): void => {

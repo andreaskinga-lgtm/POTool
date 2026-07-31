@@ -1,5 +1,5 @@
 import { PadSlice } from '../types'
-import { trimBuffer } from './buffer-utils'
+import { trimBuffer, applyLofi } from './buffer-utils'
 
 type ScheduledSource = { source: AudioBufferSourceNode; gain: GainNode }
 
@@ -41,27 +41,36 @@ export function playBuffer(
   buffer: AudioBuffer,
   inPoint: number,
   outPoint: number,
-  volume = 1.0
+  volume = 1.0,
+  lofi = false
 ): void {
   stopPlayback()
   const ctx = getAudioContext()
   const trimmed = trimBuffer(buffer, inPoint, outPoint)
 
-  const gainNode = ctx.createGain()
-  gainNode.gain.value = volume
-  gainNode.connect(ctx.destination)
+  const scheduleSource = (buf: AudioBuffer): void => {
+    const gainNode = ctx.createGain()
+    gainNode.gain.value = volume
+    gainNode.connect(ctx.destination)
 
-  const source = ctx.createBufferSource()
-  source.buffer = trimmed
-  source.connect(gainNode)
-  source.start(0)
+    const source = ctx.createBufferSource()
+    source.buffer = buf
+    source.connect(gainNode)
+    source.start(0)
 
-  const entry: ScheduledSource = { source, gain: gainNode }
-  scheduledSources = [entry]
+    const entry: ScheduledSource = { source, gain: gainNode }
+    scheduledSources = [entry]
 
-  source.onended = () => {
-    scheduledSources = scheduledSources.filter((e) => e !== entry)
-    gainNode.disconnect()
+    source.onended = () => {
+      scheduledSources = scheduledSources.filter((e) => e !== entry)
+      gainNode.disconnect()
+    }
+  }
+
+  if (lofi) {
+    applyLofi(trimmed).then(scheduleSource)
+  } else {
+    scheduleSource(trimmed)
   }
 }
 
@@ -70,11 +79,12 @@ export interface SequencePlaybackCallbacks {
   onComplete?: () => void
 }
 
-export function playSequence(
+export async function playSequence(
   pads: (PadSlice | null)[],
   countIn: boolean,
-  callbacks?: SequencePlaybackCallbacks
-): void {
+  callbacks?: SequencePlaybackCallbacks,
+  lofi = false
+): Promise<void> {
   stopPlayback()
   const ctx = getAudioContext()
 
@@ -82,7 +92,10 @@ export function playSequence(
   for (let i = 0; i < pads.length; i++) {
     const pad = pads[i]
     if (!pad) continue
-    const trimmed = trimBuffer(pad.audioBuffer, pad.inPoint, pad.outPoint)
+    let trimmed = trimBuffer(pad.audioBuffer, pad.inPoint, pad.outPoint)
+    if (lofi) {
+      trimmed = await applyLofi(trimmed)
+    }
     loadedPads.push({ index: i, buffer: trimmed })
   }
 

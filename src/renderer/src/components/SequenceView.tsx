@@ -17,28 +17,39 @@ export function SequenceView(): React.JSX.Element {
   useEffect(() => {
     if (!containerRef.current) return
 
-    const combined = buildCombinedBuffer(pads)
-    const buffer = combined ?? getAudioContext().createBuffer(1, 44100, 44100)
+    const container = containerRef.current
+    let ws: WaveSurfer | null = null
+    let cancelled = false
 
-    const ws = WaveSurfer.create({
-      container: containerRef.current,
-      waveColor: '#ff6600',
-      progressColor: '#cc5200',
-      cursorColor: '#ffffff',
-      cursorWidth: 2,
-      height: 256,
-      normalize: false,
-      fillParent: true,
-      autoScroll: false,
-      autoCenter: false,
-      interact: false
-    })
+    ;(async () => {
+      const combined = await buildCombinedBuffer(pads)
+      if (cancelled) return
 
-    ws.loadBlob(audioBufferToBlob(buffer))
-    wavesurferRef.current = ws
+      const buffer = combined ?? getAudioContext().createBuffer(1, 44100, 44100)
+
+      ws = WaveSurfer.create({
+        container,
+        waveColor: '#ff6600',
+        progressColor: '#cc5200',
+        cursorColor: '#ffffff',
+        cursorWidth: 2,
+        height: 256,
+        normalize: false,
+        fillParent: true,
+        autoScroll: false,
+        autoCenter: false,
+        interact: false
+      })
+
+      ws.loadBlob(audioBufferToBlob(buffer))
+      wavesurferRef.current = ws
+    })()
 
     return () => {
-      ws.destroy()
+      cancelled = true
+      if (ws) {
+        ws.destroy()
+      }
       wavesurferRef.current = null
     }
   }, [pads])

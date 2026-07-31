@@ -12,11 +12,13 @@ export function TransportBar(): React.JSX.Element {
   const pads = useProjectStore((s) => s.pads)
   const playbackState = useProjectStore((s) => s.playbackState)
   const countInEnabled = useProjectStore((s) => s.countInEnabled)
+  const lofiEnabled = useProjectStore((s) => s.lofiEnabled)
   const totalDuration = useProjectStore((s) => s.totalDuration)
   const isOverBudget = useProjectStore((s) => s.isOverBudget)
   const setPlaybackState = useProjectStore((s) => s.setPlaybackState)
   const setCurrentPlayingPad = useProjectStore((s) => s.setCurrentPlayingPad)
   const setCountInEnabled = useProjectStore((s) => s.setCountInEnabled)
+  const setLofiEnabled = useProjectStore((s) => s.setLofiEnabled)
   const setPanelView = useProjectStore((s) => s.setPanelView)
 
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
@@ -69,11 +71,11 @@ export function TransportBar(): React.JSX.Element {
         setPlaybackState('idle')
         setCurrentPlayingPad(null)
       }
-    })
+    }, lofiEnabled)
   }
 
   async function handleExport(): Promise<void> {
-    const wavData = exportCombinedWav(pads)
+    const wavData = await exportCombinedWav(pads, lofiEnabled)
     if (!wavData) return
     await window.api.saveWav(wavData)
   }
@@ -111,6 +113,15 @@ export function TransportBar(): React.JSX.Element {
           onChange={(e) => setCountInEnabled(e.target.checked)}
         />
         Count-in
+      </label>
+
+      <label className="transport-bar__checkbox">
+        <input
+          type="checkbox"
+          checked={lofiEnabled}
+          onChange={(e) => setLofiEnabled(e.target.checked)}
+        />
+        Lofi
       </label>
 
       <div className="transport-bar__spacer" />

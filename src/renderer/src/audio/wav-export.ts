@@ -1,13 +1,19 @@
-import { trimBuffer } from './buffer-utils'
+import { trimBuffer, applyLofi } from './buffer-utils'
 import toWav from 'audiobuffer-to-wav'
 import { PadSlice } from '../types'
 
-export function buildCombinedBuffer(pads: (PadSlice | null)[]): AudioBuffer | null {
+export async function buildCombinedBuffer(
+  pads: (PadSlice | null)[],
+  lofi = false
+): Promise<AudioBuffer | null> {
   const slices: { buffer: AudioBuffer; volume: number }[] = []
 
   for (const pad of pads) {
     if (!pad) continue
-    const trimmed = trimBuffer(pad.audioBuffer, pad.inPoint, pad.outPoint)
+    let trimmed = trimBuffer(pad.audioBuffer, pad.inPoint, pad.outPoint)
+    if (lofi) {
+      trimmed = await applyLofi(trimmed)
+    }
     slices.push({ buffer: trimmed, volume: pad.volume ?? 1.0 })
   }
 
@@ -36,8 +42,11 @@ export function encodeWav(buffer: AudioBuffer): ArrayBuffer {
   return toWav(buffer)
 }
 
-export function exportCombinedWav(pads: (PadSlice | null)[]): ArrayBuffer | null {
-  const combined = buildCombinedBuffer(pads)
+export async function exportCombinedWav(
+  pads: (PadSlice | null)[],
+  lofi = false
+): Promise<ArrayBuffer | null> {
+  const combined = await buildCombinedBuffer(pads, lofi)
   if (!combined) return null
   return encodeWav(combined)
 }

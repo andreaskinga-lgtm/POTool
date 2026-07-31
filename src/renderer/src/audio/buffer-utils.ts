@@ -275,6 +275,30 @@ export function parseOp1Slices(arrayBuffer: ArrayBuffer): { start: number; end: 
   return slices.length > 0 ? slices : null
 }
 
+const LOFI_SAMPLE_RATE = 23000
+const LOFI_BIT_DEPTH = 8 // 256 levels (signed: -128..127)
+
+/**
+ * Applies PO-33 KO-style lo-fi degradation:
+ * 1. Downsample to 23 kHz (bandwidth-limiting, aliasing)
+ * 2. Quantize to 8-bit (gritty digital noise floor)
+ * 3. Upsample back to 44100 Hz so playback / export works at the correct pitch
+ */
+export async function applyLofi(buffer: AudioBuffer): Promise<AudioBuffer> {
+  // Step 1: downsample to LOFI_SAMPLE_RATE
+  const downsampled = await resample(buffer, LOFI_SAMPLE_RATE)
+
+  // Step 2: quantize to 8-bit in-place
+  const levels = Math.pow(2, LOFI_BIT_DEPTH - 1) // 128
+  const data = downsampled.getChannelData(0)
+  for (let i = 0; i < data.length; i++) {
+    data[i] = Math.round(data[i] * levels) / levels
+  }
+
+  // Step 3: upsample back to TARGET_SAMPLE_RATE (bakes artifacts in)
+  return resample(downsampled, TARGET_SAMPLE_RATE)
+}
+
 export function trimBuffer(buffer: AudioBuffer, inPoint: number, outPoint: number): AudioBuffer {
   const length = outPoint - inPoint
   if (length <= 0) {
