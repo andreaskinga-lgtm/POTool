@@ -13,8 +13,6 @@ A desktop sample-pack editor built for [Teenage Engineering Pocket Operator](htt
 - **Auto-slice** — automatic transient detection to quickly chop up a longer sample across multiple pads
 - **OP-1 / OP-Z slice import** — when you load an `.aif` drum kit downloaded from [op1.fun](https://op1.fun), POTool reads the embedded `APPL` metadata chunk and offers a one-click button to apply the original slice cut points directly as pad trim points — no manual editing required
 - **Sequence preview** — full-length playback view with a scrolling timeline cursor showing the combined sequence
-- **40-second budget** — real-time duration meter warns when your sequence exceeds the 40 s Pocket Operator factory sample limit
-- **Count-in** — optional metronome count-in before playback
 - **Audio output routing** — choose any connected output device from the transport bar
 - **Project save/load** — projects are saved as a folder containing `project.json` and the audio files; portable and easy to share
 - **WAV export** — exports a single, correctly interleaved stereo WAV file at 44.1 kHz
@@ -25,11 +23,11 @@ A desktop sample-pack editor built for [Teenage Engineering Pocket Operator](htt
 
 Pads map to keyboard rows matching the Pocket Operator's 4×4 button grid:
 
-| Row | Keys | Pads |
-|-----|------|------|
-| 1   | `1` `2` `3` `4` | 1–4  |
-| 2   | `Q` `W` `E` `R` | 5–8  |
-| 3   | `A` `S` `D` `F` | 9–12 |
+| Row | Keys            | Pads  |
+| --- | --------------- | ----- |
+| 1   | `1` `2` `3` `4` | 1–4   |
+| 2   | `Q` `W` `E` `R` | 5–8   |
+| 3   | `A` `S` `D` `F` | 9–12  |
 | 4   | `Z` `X` `C` `V` | 13–16 |
 
 ---
