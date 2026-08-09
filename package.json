@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Desktop sample-pack editor for the Teenage Engineering Pocket Operator",
   "main": "./out/main/index.js",
-  "author": "andreaskinga@gmail.com",
+  "author": {
+    "name": "Andreas King",
+    "email": "andreaskinga@gmail.com"
+  },
   "homepage": "https://github.com/andreaskinga-lgtm/POTool",
   "scripts": {
     "format": "prettier --write .",
@@ -18,12 +21,16 @@
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "build:linux": "electron-vite build && electron-builder --linux",
+    "release:patch": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "audiobuffer-to-wav": "^1.0.0",
+    "electron-updater": "^6.8.9",
     "meyda": "^5.6.3",
     "wavesurfer.js": "^7.12.7",
     "zustand": "^5.0.13"

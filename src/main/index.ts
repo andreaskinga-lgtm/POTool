@@ -3,6 +3,7 @@ import { join } from 'path'
 import { readFile, writeFile, mkdir, copyFile, readdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 
 const BASE_WIDTH = 600
@@ -83,12 +84,79 @@ function buildMenu(): void {
       ]
     },
     ...(process.platform === 'darwin'
-      ? [{ role: 'appMenu' as const }]
-      : [])
+      ? [{
+          label: app.name,
+          submenu: [
+            { label: `About ${app.name}`, role: 'about' as const },
+            { type: 'separator' as const },
+            { role: 'services' as const },
+            { type: 'separator' as const },
+            { role: 'hide' as const },
+            { role: 'hideOthers' as const },
+            { role: 'unhide' as const },
+            { type: 'separator' as const },
+            { role: 'quit' as const }
+          ]
+        }]
+      : []),
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Check for Updates…',
+          click: () => {
+            if (is.dev) {
+              dialog.showMessageBox({ type: 'info', title: 'Updates', message: 'Update checking is disabled in development.' })
+              return
+            }
+            autoUpdater.checkForUpdates()
+          }
+        }
+      ]
+    }
   ]
 
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
+}
+
+// --- Auto Updater ---
+
+function setupAutoUpdater(mainWindow: BrowserWindow): void {
+  if (is.dev) return
+
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+
+  autoUpdater.on('update-available', (info) => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: `POTool ${info.version} is available`,
+      detail: 'The update is downloading in the background and will be ready shortly.',
+      buttons: ['OK']
+    })
+  })
+
+  autoUpdater.on('update-downloaded', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Ready to Install',
+      message: 'A new version of POTool has been downloaded.',
+      detail: 'Restart now to apply the update, or it will be applied next time you launch.',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall()
+    })
+  })
+
+  autoUpdater.on('error', (err) => {
+    console.error('Auto-updater error:', err)
+  })
+
+  // Delay initial check so it doesn't race with window creation
+  setTimeout(() => autoUpdater.checkForUpdates(), 3000)
 }
 
 // --- IPC Handlers ---
@@ -197,7 +265,17 @@ function registerIpcHandlers(): void {
 app.commandLine.appendSwitch('disable-features', 'OverlayScrollbar')
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.potool')
+  electronApp.setAppUserModelId('com.andreaskinga.potool')
+
+  if (process.platform === 'darwin') {
+    app.setAboutPanelOptions({
+      applicationName: 'POTool',
+      applicationVersion: app.getVersion(),
+      version: '',
+      copyright: `© ${new Date().getFullYear()} Andreas King`,
+      website: 'https://github.com/andreaskinga-lgtm/POTool'
+    })
+  }
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -205,7 +283,8 @@ app.whenReady().then(() => {
 
   registerIpcHandlers()
   buildMenu()
-  createWindow()
+  const mainWindow = createWindow()
+  setupAutoUpdater(mainWindow)
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
