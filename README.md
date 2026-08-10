@@ -13,7 +13,8 @@ A desktop sample-pack editor built for [Teenage Engineering Pocket Operator](htt
 - **Auto-slice** — automatic transient detection to quickly chop up a longer sample across multiple pads
 - **OP-1 / OP-Z slice import** — when you load an `.aif` drum kit downloaded from [op1.fun](https://op1.fun), POTool reads the embedded `APPL` metadata chunk and offers a one-click button to apply the original slice cut points directly as pad trim points — no manual editing required
 - **Change pitch+speed of samples** — change the speed and pitch of samples to save space - or just change the sound
-- **Lofi Audio Preview** — Downsample the sounds to simulate how it will sound on the PO-33. Or export the downsampled audio to make it even more crunchy when you load it onto the PO-33.
+- **Merge samples** - merge two samples together on a single pad (like combining a bass drum and hi hat)
+- **Lofi audio preview** — Downsample the sounds to simulate how it will sound on the PO-33. Or even export the downsampled audio to make it even more crunchy when you load it onto the PO-33.
 - **Sequence preview** — full-length playback view with a scrolling timeline cursor showing the combined sequence
 - **Project save/load** — projects are saved as a folder containing `project.json` and the audio files; portable and easy to share
 - **WAV export** — exports a single, correctly interleaved stereo WAV file at 44.1 kHz
