@@ -86,8 +86,74 @@ button:disabled {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 12px;
+}
+
+.app__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 4px 12px 12px;
   gap: 12px;
+}
+
+/* Title Bar */
+.title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  flex-shrink: 0;
+  background: var(--color-bg);
+  position: relative;
+  -webkit-app-region: drag;
+}
+
+.title-bar--mac {
+  padding-left: 80px; /* Reserve space for traffic lights */
+}
+
+.title-bar__title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-dim);
+  letter-spacing: 1.5px;
+  pointer-events: none;
+}
+
+.title-bar__controls {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  -webkit-app-region: no-drag;
+}
+
+.title-bar__btn {
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-dim);
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.title-bar__btn:hover {
+  background: var(--color-surface-light);
+  color: var(--color-text);
+}
+
+.title-bar__btn--close:hover {
+  background: var(--color-danger);
+  color: #fff;
 }
 
 /* Waveform Panel */
@@ -474,13 +540,24 @@ button:disabled {
   overflow-y: hidden;
 }
 
-.waveform-editor__volume {
+.waveform-editor__controls-row {
   display: flex;
   align-items: center;
+  gap: 24px;
   padding: 8px 0 0 0;
   flex-shrink: 0;
   border-top: 1px solid var(--color-border);
   margin-top: 4px;
+}
+
+.waveform-editor__volume {
+  display: flex;
+  align-items: center;
+}
+
+.waveform-editor__speed {
+  display: flex;
+  align-items: center;
 }
 
 .sequence-view__pads-info {
@@ -628,4 +705,106 @@ button:disabled {
 .btn-sm--primary:hover:not(:disabled) {
   background: var(--color-accent-dim);
   border-color: var(--color-accent-dim);
+}
+
+/* ─── Tutorial tours ────────────────────────────────────────────────────── */
+
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+}
+
+.tour-overlay__catcher {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.55);
+  pointer-events: auto;
+}
+
+.tour-spotlight {
+  position: fixed;
+  box-shadow: 0 0 0 9999px rgba(10, 10, 10, 0.55);
+  border: 2px solid var(--color-accent);
+  outline: 3px solid rgba(255, 102, 0, 0.25);
+  pointer-events: none;
+  transition:
+    top 0.15s ease,
+    left 0.15s ease,
+    width 0.15s ease,
+    height 0.15s ease;
+}
+
+.tour-tooltip {
+  position: fixed;
+  z-index: 20001;
+  width: 260px;
+  max-width: calc(100vw - 32px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 14px 14px 12px;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+.tour-tooltip__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.tour-tooltip__close:hover {
+  color: var(--color-text);
+}
+
+.tour-tooltip__title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+  padding-right: 18px;
+  color: var(--color-accent);
+}
+
+.tour-tooltip__body {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text);
+  margin-bottom: 12px;
+}
+
+.tour-tooltip__footer {
+  border-top: 1px solid var(--color-border);
+  padding-top: 8px;
+  margin-bottom: 8px;
+}
+
+.tour-tooltip__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--color-text-dim);
+  cursor: pointer;
+}
+
+.tour-tooltip__nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tour-tooltip__step-count {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--color-text-dim);
 }

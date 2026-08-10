@@ -104,7 +104,7 @@ export function WaveformPanel(): React.JSX.Element {
   }
 
   return (
-    <div className="waveform-panel">
+    <div className="waveform-panel" data-tour="waveform-panel">
       <div className="waveform-panel__header">
         <span className="waveform-panel__title">{title}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -200,4 +200,3 @@ export function WaveformPanel(): React.JSX.Element {
     </div>
   )
 }
-

@@ -6,6 +6,7 @@ export interface PadSlice {
   inPoint: number // in point in samples
   outPoint: number // out point in samples
   volume?: number // playback gain 0.0–1.0, default 1.0
+  speed?: number // playback rate 0.01–4.0, default 1.0
 }
 
 export interface ProjectData {
@@ -22,6 +23,7 @@ export interface SerializedPadSlice {
   outPoint: number
   localFile: string
   volume?: number // playback gain 0.0–1.0, default 1.0
+  speed?: number // playback rate 0.01–4.0, default 1.0
 }
 
 export type PanelView = 'overview' | 'editor' | 'import' | 'sequence'
@@ -29,3 +31,10 @@ export type PanelView = 'overview' | 'editor' | 'import' | 'sequence'
 export type PlaybackState = 'idle' | 'playing'
 
 export type ImportMode = 'single' | 'multi'
+
+export type TourId = 'general' | 'import' | 'padEditing'
+
+export interface TutorialState {
+  disabled: boolean
+  seen: Record<TourId, boolean>
+}

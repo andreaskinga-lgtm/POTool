@@ -12,8 +12,9 @@ A desktop sample-pack editor built for [Teenage Engineering Pocket Operator](htt
 - **Waveform editor** — visualise each clip with [wavesurfer.js](https://wavesurfer.js.org/) and set precise in/out trim points
 - **Auto-slice** — automatic transient detection to quickly chop up a longer sample across multiple pads
 - **OP-1 / OP-Z slice import** — when you load an `.aif` drum kit downloaded from [op1.fun](https://op1.fun), POTool reads the embedded `APPL` metadata chunk and offers a one-click button to apply the original slice cut points directly as pad trim points — no manual editing required
+- **Change pitch+speed of samples** — change the speed and pitch of samples to save space - or just change the sound
+- **Lofi Audio Preview** — Downsample the sounds to simulate how it will sound on the PO-33. Or export the downsampled audio to make it even more crunchy when you load it onto the PO-33.
 - **Sequence preview** — full-length playback view with a scrolling timeline cursor showing the combined sequence
-- **Audio output routing** — choose any connected output device from the transport bar
 - **Project save/load** — projects are saved as a folder containing `project.json` and the audio files; portable and easy to share
 - **WAV export** — exports a single, correctly interleaved stereo WAV file at 44.1 kHz
 
@@ -78,9 +79,3 @@ src/
     stores/    # Zustand state store
     types/     # Shared TypeScript types
 ```
-
----
-
-## Recommended IDE Setup
-
-[VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)

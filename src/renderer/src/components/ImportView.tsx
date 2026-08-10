@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useProjectStore } from '../stores/project-store'
+import { useTutorialStore } from '../stores/tutorial-store'
 import { decodeAudioFile, findNearestZeroCrossing, parseOp1Slices } from '../audio/buffer-utils'
 import { detectTransients, onsetsToSliceRegions } from '../audio/transient-detector'
 import { PadSlice } from '../types'
@@ -25,6 +26,13 @@ export function ImportView(): React.JSX.Element {
   const setPad = useProjectStore((s) => s.setPad)
   const setImportMode = useProjectStore((s) => s.setImportMode)
   const selectPad = useProjectStore((s) => s.selectPad)
+
+  // Trigger the import tutorial tour once the file has finished loading and its
+  // controls are actually rendered (skipped if already seen/disabled elsewhere)
+  useEffect(() => {
+    if (!audioBuffer) return
+    useTutorialStore.getState().start('import')
+  }, [audioBuffer])
 
   // Load file on mount (ref prevents StrictMode double-invoke)
   const didOpenRef = useRef(false)
@@ -101,7 +109,11 @@ export function ImportView(): React.JSX.Element {
   function playSlice(start: number, end: number): void {
     if (!audioBuffer) return
     // Stop any in-progress playback
-    try { playingSourceRef.current?.stop() } catch { /* already stopped */ }
+    try {
+      playingSourceRef.current?.stop()
+    } catch {
+      /* already stopped */
+    }
     playingSourceRef.current = null
 
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
@@ -112,7 +124,9 @@ export function ImportView(): React.JSX.Element {
     source.buffer = audioBuffer
     source.connect(ctx.destination)
     source.start(0, start, end - start)
-    source.onended = () => { playingSourceRef.current = null }
+    source.onended = () => {
+      playingSourceRef.current = null
+    }
     playingSourceRef.current = source
   }
 
@@ -448,35 +462,38 @@ export function ImportView(): React.JSX.Element {
                 className="btn-sm"
                 onClick={handleOp1Slices}
                 title={`${op1Slices.length} slices embedded in file`}
+                data-tour="import-op1-slices"
               >
                 OP-1 Slices
               </button>
             )}
-            <button className="btn-sm" onClick={handleAutoSlice}>
+            <button className="btn-sm" onClick={handleAutoSlice} data-tour="import-autoslice">
               Auto-Slice
             </button>
-            <div className="import-view__slider">
-              <span>Sensitivity</span>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={sensitivity}
-                onChange={(e) => setSensitivity(parseFloat(e.target.value))}
-              />
-            </div>
-            <div className="import-view__slider">
-              <span>Slices</span>
-              <input
-                type="number"
-                min="1"
-                max="16"
-                value={maxSlices}
-                onChange={(e) =>
-                  setMaxSlices(Math.min(16, Math.max(1, parseInt(e.target.value) || 1)))
-                }
-              />
+            <div style={{ display: 'flex', gap: 8 }} data-tour="import-sensitivity">
+              <div className="import-view__slider">
+                <span>Sensitivity</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={sensitivity}
+                  onChange={(e) => setSensitivity(parseFloat(e.target.value))}
+                />
+              </div>
+              <div className="import-view__slider">
+                <span>Slices</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="16"
+                  value={maxSlices}
+                  onChange={(e) =>
+                    setMaxSlices(Math.min(16, Math.max(1, parseInt(e.target.value) || 1)))
+                  }
+                />
+              </div>
             </div>
           </>
         )}
@@ -504,6 +521,7 @@ export function ImportView(): React.JSX.Element {
             color: 'var(--color-text-dim)'
           }}
           title="Vertical gain — amplifies waveform display to reveal quiet transients"
+          data-tour="import-gain"
         >
           Gain
           <input
@@ -519,11 +537,16 @@ export function ImportView(): React.JSX.Element {
             {verticalGain.toFixed(1)}x
           </span>
         </label>
-        <ZoomControls
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onZoomReset={handleZoomReset}
-        />
+        <span
+          data-tour="import-zoom"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+        >
+          <ZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+          />
+        </span>
         <span
           style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-dim)' }}
         >
@@ -543,7 +566,7 @@ export function ImportView(): React.JSX.Element {
       <div
         style={{ position: 'relative', cursor: pendingInTime !== null ? 'crosshair' : 'default' }}
       >
-        <div className="import-view__wavesurfer" ref={containerRef} />
+        <div className="import-view__wavesurfer" ref={containerRef} data-tour="import-wavesurfer" />
         <div
           style={{
             position: 'absolute',

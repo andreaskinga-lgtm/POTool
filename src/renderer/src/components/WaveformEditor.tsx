@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useProjectStore } from '../stores/project-store'
+import { useTutorialStore } from '../stores/tutorial-store'
 import { findNearestZeroCrossing } from '../audio/buffer-utils'
 import { useWaveformCanvas, styleRegionHandles } from '../hooks/use-waveform-canvas'
 import { ZoomControls } from './ZoomControls'
@@ -11,11 +12,13 @@ export function WaveformEditor(): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const [verticalGain, setVerticalGain] = useState(1)
   const [volumePct, setVolumePct] = useState(100)
+  const [speedPct, setSpeedPct] = useState(100)
 
   const selectedPadIndex = useProjectStore((s) => s.selectedPadIndex)
   const pads = useProjectStore((s) => s.pads)
   const updateSlicePoints = useProjectStore((s) => s.updateSlicePoints)
   const updatePadVolume = useProjectStore((s) => s.updatePadVolume)
+  const updatePadSpeed = useProjectStore((s) => s.updatePadSpeed)
   const removePad = useProjectStore((s) => s.removePad)
 
   const pad = selectedPadIndex !== null ? pads[selectedPadIndex] : null
@@ -39,7 +42,7 @@ export function WaveformEditor(): React.JSX.Element {
           end: outTime,
           color: 'rgba(255, 102, 0, 0.25)',
           drag: true,
-          resize: true,
+          resize: true
         })
         styleRegionHandles(region)
 
@@ -47,10 +50,7 @@ export function WaveformEditor(): React.JSX.Element {
         const sliceDuration = outTime - inTime
         const visibleDuration = Math.min(sliceDuration * 1.4, duration)
         const targetPxPerSec = containerWidth / visibleDuration
-        const initialZoomLevel = Math.min(
-          Math.max(targetPxPerSec, MIN_PX_PER_SEC),
-          MAX_PX_PER_SEC
-        )
+        const initialZoomLevel = Math.min(Math.max(targetPxPerSec, MIN_PX_PER_SEC), MAX_PX_PER_SEC)
         const initialScrollRatio = (inTime + outTime) / 2 / duration
 
         return { initialZoomLevel, initialScrollRatio }
@@ -71,7 +71,7 @@ export function WaveformEditor(): React.JSX.Element {
         outSample = Math.min(data.length, outSample)
 
         updateSlicePoints(selectedPadIndex, inSample, outSample)
-      },
+      }
     }
   )
 
@@ -93,6 +93,18 @@ export function WaveformEditor(): React.JSX.Element {
     setVolumePct(Math.round((p?.volume ?? 1.0) * 100))
   }, [selectedPadIndex])
 
+  // Sync speed slider to the selected pad's stored speed
+  useEffect(() => {
+    const p = selectedPadIndex !== null ? pads[selectedPadIndex] : null
+    setSpeedPct(Math.round((p?.speed ?? 1.0) * 100))
+  }, [selectedPadIndex])
+
+  // Trigger the pad-editing tutorial tour once a pad is actually selected/rendered here
+  useEffect(() => {
+    if (selectedPadIndex === null || !pad) return
+    useTutorialStore.getState().start('padEditing')
+  }, [selectedPadIndex, pad])
+
   if (!pad || selectedPadIndex === null) return <div />
 
   const sliceDuration = (pad.outPoint - pad.inPoint) / pad.audioBuffer.sampleRate
@@ -112,9 +124,10 @@ export function WaveformEditor(): React.JSX.Element {
             alignItems: 'center',
             gap: 4,
             fontSize: 11,
-            color: 'var(--color-text-dim)',
+            color: 'var(--color-text-dim)'
           }}
           title="Vertical gain — amplifies waveform display to reveal quiet transients"
+          data-tour="editor-gain"
         >
           Gain
           <input
@@ -130,48 +143,105 @@ export function WaveformEditor(): React.JSX.Element {
             {verticalGain.toFixed(1)}x
           </span>
         </label>
-        <ZoomControls
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onZoomReset={handleZoomReset}
-        />
-        <button className="btn-delete" onClick={() => removePad(selectedPadIndex)}>
+        <span
+          data-tour="editor-zoom"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+        >
+          <ZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+          />
+        </span>
+        <button
+          className="btn-delete"
+          onClick={() => removePad(selectedPadIndex)}
+          data-tour="editor-delete"
+        >
           Delete
         </button>
       </div>
-      <div className="waveform-editor__wavesurfer" ref={containerRef} />
-      <div className="waveform-editor__volume">
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            fontSize: 11,
-            color: 'var(--color-text-dim)',
-          }}
-        >
-          Volume
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={volumePct}
-            onChange={(e) => {
-              const val = parseInt(e.target.value, 10)
-              setVolumePct(val)
-              if (selectedPadIndex !== null) {
-                updatePadVolume(selectedPadIndex, val / 100)
-              }
+      <div
+        className="waveform-editor__wavesurfer"
+        ref={containerRef}
+        data-tour="editor-wavesurfer"
+      />
+      <div className="waveform-editor__controls-row">
+        <div className="waveform-editor__volume" data-tour="editor-volume">
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 11,
+              color: 'var(--color-text-dim)'
             }}
-            style={{ width: 120 }}
-          />
-          <span style={{ fontFamily: 'var(--font-mono)', minWidth: 36 }}>
-            {volumePct}%
-          </span>
-        </label>
+          >
+            Volume
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={volumePct}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10)
+                setVolumePct(val)
+                if (selectedPadIndex !== null) {
+                  updatePadVolume(selectedPadIndex, val / 100)
+                }
+              }}
+              onDoubleClick={() => {
+                setVolumePct(100)
+                if (selectedPadIndex !== null) {
+                  updatePadVolume(selectedPadIndex, 1.0)
+                }
+              }}
+              style={{ width: 120 }}
+            />
+            <span style={{ fontFamily: 'var(--font-mono)', minWidth: 36 }}>{volumePct}%</span>
+          </label>
+        </div>
+        <div className="waveform-editor__speed" data-tour="editor-speed">
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 11,
+              color: 'var(--color-text-dim)'
+            }}
+          >
+            Speed
+            <input
+              type="range"
+              min={1}
+              max={400}
+              step={1}
+              value={speedPct}
+              onChange={(e) => {
+                let val = parseInt(e.target.value, 10)
+                // Soft snap to 100 (1x) when within ±2
+                if (Math.abs(val - 100) <= 2) val = 100
+                setSpeedPct(val)
+                if (selectedPadIndex !== null) {
+                  updatePadSpeed(selectedPadIndex, val / 100)
+                }
+              }}
+              onDoubleClick={() => {
+                setSpeedPct(100)
+                if (selectedPadIndex !== null) {
+                  updatePadSpeed(selectedPadIndex, 1.0)
+                }
+              }}
+              style={{ width: 120 }}
+            />
+            <span style={{ fontFamily: 'var(--font-mono)', minWidth: 42 }}>
+              {(speedPct / 100).toFixed(2)}x
+            </span>
+          </label>
+        </div>
       </div>
     </div>
   )
 }
-

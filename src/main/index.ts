@@ -5,11 +5,18 @@ import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
+import {
+  getTutorialState,
+  markTutorialSeen,
+  setTutorialsDisabled,
+  resetTutorials,
+  TourId
+} from './tutorial-state'
 
 const BASE_WIDTH = 600
 const BASE_HEIGHT = 920
 const MIN_WIDTH = 500
-const MIN_HEIGHT = Math.round(MIN_WIDTH * BASE_HEIGHT / BASE_WIDTH)
+const MIN_HEIGHT = Math.round((MIN_WIDTH * BASE_HEIGHT) / BASE_WIDTH)
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -20,6 +27,9 @@ function createWindow(): BrowserWindow {
     show: false,
     autoHideMenuBar: false,
     backgroundColor: '#1a1a1a',
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 12, y: 10 } }
+      : { frame: false }),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -36,6 +46,8 @@ function createWindow(): BrowserWindow {
   }
   mainWindow.on('resize', updateZoom)
   mainWindow.webContents.on('did-finish-load', updateZoom)
+  mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized'))
+  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:unmaximized'))
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
@@ -62,18 +74,54 @@ function buildMenu(): void {
   }
 
   const template: Electron.MenuItemConstructorOptions[] = [
+    ...(process.platform === 'darwin'
+      ? [
+          {
+            role: 'appMenu' as const,
+            submenu: [
+              { label: `About ${app.name}`, role: 'about' as const },
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const }
+            ]
+          }
+        ]
+      : []),
     {
       label: 'File',
       submenu: [
-        { label: 'New Project', accelerator: 'CmdOrCtrl+N', click: () => sendToFocused('menu:new-project') },
-        { label: 'Open Project…', accelerator: 'CmdOrCtrl+O', click: () => sendToFocused('menu:open-project') },
+        {
+          label: 'New Project',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => sendToFocused('menu:new-project')
+        },
+        {
+          label: 'Open Project…',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => sendToFocused('menu:open-project')
+        },
         { type: 'separator' },
-        { label: 'Save Project', accelerator: 'CmdOrCtrl+S', click: () => sendToFocused('menu:save-project') },
-        { label: 'Save Project As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendToFocused('menu:save-project-as') },
+        {
+          label: 'Save Project',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => sendToFocused('menu:save-project')
+        },
+        {
+          label: 'Save Project As…',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => sendToFocused('menu:save-project-as')
+        },
         { type: 'separator' },
-        { label: 'Export WAV…', accelerator: 'CmdOrCtrl+E', click: () => sendToFocused('menu:export') },
-        { type: 'separator' },
-        process.platform === 'darwin' ? { role: 'close' } : { role: 'quit' }
+        {
+          label: 'Export WAV…',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => sendToFocused('menu:export')
+        }
       ]
     },
     {
@@ -83,22 +131,6 @@ function buildMenu(): void {
         { label: 'Redo', accelerator: 'CmdOrCtrl+Shift+Z', click: () => sendToFocused('menu:redo') }
       ]
     },
-    ...(process.platform === 'darwin'
-      ? [{
-          label: app.name,
-          submenu: [
-            { label: `About ${app.name}`, role: 'about' as const },
-            { type: 'separator' as const },
-            { role: 'services' as const },
-            { type: 'separator' as const },
-            { role: 'hide' as const },
-            { role: 'hideOthers' as const },
-            { role: 'unhide' as const },
-            { type: 'separator' as const },
-            { role: 'quit' as const }
-          ]
-        }]
-      : []),
     {
       label: 'Help',
       submenu: [
@@ -106,10 +138,22 @@ function buildMenu(): void {
           label: 'Check for Updates…',
           click: () => {
             if (is.dev) {
-              dialog.showMessageBox({ type: 'info', title: 'Updates', message: 'Update checking is disabled in development.' })
+              dialog.showMessageBox({
+                type: 'info',
+                title: 'Updates',
+                message: 'Update checking is disabled in development.'
+              })
               return
             }
             autoUpdater.checkForUpdates()
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Replay Tutorials',
+          click: () => {
+            resetTutorials()
+            sendToFocused('menu:replay-tutorials')
           }
         }
       ]
@@ -139,16 +183,18 @@ function setupAutoUpdater(mainWindow: BrowserWindow): void {
   })
 
   autoUpdater.on('update-downloaded', () => {
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'Update Ready to Install',
-      message: 'A new version of POTool has been downloaded.',
-      detail: 'Restart now to apply the update, or it will be applied next time you launch.',
-      buttons: ['Restart Now', 'Later'],
-      defaultId: 0
-    }).then(({ response }) => {
-      if (response === 0) autoUpdater.quitAndInstall()
-    })
+    dialog
+      .showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Update Ready to Install',
+        message: 'A new version of POTool has been downloaded.',
+        detail: 'Restart now to apply the update, or it will be applied next time you launch.',
+        buttons: ['Restart Now', 'Later'],
+        defaultId: 0
+      })
+      .then(({ response }) => {
+        if (response === 0) autoUpdater.quitAndInstall()
+      })
   })
 
   autoUpdater.on('error', (err) => {
@@ -166,9 +212,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle('dialog:openAudioFile', async () => {
     const result = await dialog.showOpenDialog({
       title: 'Import Audio',
-      filters: [
-        { name: 'Audio Files', extensions: ['wav', 'mp3', 'aiff', 'aif', 'flac', 'ogg'] }
-      ],
+      filters: [{ name: 'Audio Files', extensions: ['wav', 'mp3', 'aiff', 'aif', 'flac', 'ogg'] }],
       properties: ['openFile']
     })
     if (result.canceled || result.filePaths.length === 0) return null
@@ -227,17 +271,25 @@ function registerIpcHandlers(): void {
   })
 
   // Write a raw file (e.g. exported WAV for merged pads) into a project folder
-  ipcMain.handle('project:writeFile', async (_, folderPath: string, filename: string, data: ArrayBuffer) => {
-    if (!existsSync(folderPath)) {
-      await mkdir(folderPath, { recursive: true })
+  ipcMain.handle(
+    'project:writeFile',
+    async (_, folderPath: string, filename: string, data: ArrayBuffer) => {
+      if (!existsSync(folderPath)) {
+        await mkdir(folderPath, { recursive: true })
+      }
+      await writeFile(join(folderPath, filename), Buffer.from(data))
     }
-    await writeFile(join(folderPath, filename), Buffer.from(data))
-  })
+  )
 
   // Save project.json + copy audio files
   ipcMain.handle(
     'project:save',
-    async (_, folderPath: string, projectJson: string, filesToCopy: { src: string; dest: string }[]) => {
+    async (
+      _,
+      folderPath: string,
+      projectJson: string,
+      filesToCopy: { src: string; dest: string }[]
+    ) => {
       // Ensure folder exists
       if (!existsSync(folderPath)) {
         await mkdir(folderPath, { recursive: true })
@@ -256,6 +308,29 @@ function registerIpcHandlers(): void {
       return true
     }
   )
+
+  // Window controls (used by custom title bar on Windows/Linux)
+  ipcMain.handle('window:minimize', () => {
+    BrowserWindow.getFocusedWindow()?.minimize()
+  })
+  ipcMain.handle('window:maximize', () => {
+    const win = BrowserWindow.getFocusedWindow()
+    if (win?.isMaximized()) win.unmaximize()
+    else win?.maximize()
+  })
+  ipcMain.handle('window:close', () => {
+    BrowserWindow.getFocusedWindow()?.close()
+  })
+  ipcMain.handle(
+    'window:isMaximized',
+    () => BrowserWindow.getFocusedWindow()?.isMaximized() ?? false
+  )
+
+  // Tutorial state (persisted in userData)
+  ipcMain.handle('tutorial:getState', () => getTutorialState())
+  ipcMain.handle('tutorial:markSeen', (_, id: TourId) => markTutorialSeen(id))
+  ipcMain.handle('tutorial:setDisabled', (_, disabled: boolean) => setTutorialsDisabled(disabled))
+  ipcMain.handle('tutorial:reset', () => resetTutorials())
 }
 
 // --- App Lifecycle ---
@@ -292,7 +367,5 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  app.quit()
 })

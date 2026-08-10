@@ -69,7 +69,14 @@ export function PadGrid(): React.JSX.Element {
     (index: number): void => {
       const pad = pads[index]
       if (pad) {
-        playBuffer(pad.audioBuffer, pad.inPoint, pad.outPoint, pad.volume ?? 1.0, lofiEnabled)
+        playBuffer(
+          pad.audioBuffer,
+          pad.inPoint,
+          pad.outPoint,
+          pad.volume ?? 1.0,
+          lofiEnabled,
+          pad.speed ?? 1.0
+        )
         selectPad(index)
       } else {
         setImportMode('single', index)
@@ -140,7 +147,7 @@ export function PadGrid(): React.JSX.Element {
 
   return (
     <div className="pad-grid-wrapper" onClick={() => selectPad(null)}>
-      <div className="pad-grid">
+      <div className="pad-grid" data-tour="pad-grid">
         {pads.map((pad, index) => {
           const isSelected = selectedPadIndex === index
           const isPlaying = currentPlayingPad === index

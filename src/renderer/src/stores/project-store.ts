@@ -29,6 +29,7 @@ interface ProjectStore {
   setPad: (index: number, slice: PadSlice) => void
   updateSlicePoints: (index: number, inPoint: number, outPoint: number) => void
   updatePadVolume: (index: number, volume: number) => void
+  updatePadSpeed: (index: number, speed: number) => void
   removePad: (index: number) => void
   swapPads: (indexA: number, indexB: number) => void
   selectPad: (index: number | null) => void
@@ -65,7 +66,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     return pads.reduce((total, pad) => {
       if (!pad) return total
       const samples = pad.outPoint - pad.inPoint
-      return total + samples / pad.audioBuffer.sampleRate
+      const speed = pad.speed ?? 1.0
+      return total + samples / pad.audioBuffer.sampleRate / speed
     }, 0)
   },
 
@@ -95,6 +97,15 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const pad = pads[index]
       if (!pad) return state
       pads[index] = { ...pad, volume }
+      return { pads }
+    }),
+
+  updatePadSpeed: (index, speed) =>
+    set((state) => {
+      const pads = [...state.pads]
+      const pad = pads[index]
+      if (!pad) return state
+      pads[index] = { ...pad, speed }
       return { pads }
     }),
 

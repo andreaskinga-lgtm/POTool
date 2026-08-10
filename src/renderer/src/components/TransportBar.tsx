@@ -63,15 +63,20 @@ export function TransportBar(): React.JSX.Element {
     setPanelView('sequence')
     setPlaybackState('playing')
 
-    playSequence(pads, countInEnabled, {
-      onPadStart: (padIndex) => {
-        setCurrentPlayingPad(padIndex)
+    playSequence(
+      pads,
+      countInEnabled,
+      {
+        onPadStart: (padIndex) => {
+          setCurrentPlayingPad(padIndex)
+        },
+        onComplete: () => {
+          setPlaybackState('idle')
+          setCurrentPlayingPad(null)
+        }
       },
-      onComplete: () => {
-        setPlaybackState('idle')
-        setCurrentPlayingPad(null)
-      }
-    }, lofiEnabled)
+      lofiEnabled
+    )
   }
 
   async function handleExport(): Promise<void> {
@@ -87,6 +92,7 @@ export function TransportBar(): React.JSX.Element {
         onClick={handlePlay}
         disabled={!hasLoadedPads}
         title={playbackState === 'playing' ? 'Stop' : 'Play All'}
+        data-tour="transport-play"
       >
         {playbackState === 'playing' ? '■' : '▶'}
       </button>
@@ -132,7 +138,12 @@ export function TransportBar(): React.JSX.Element {
 
       <div className="transport-bar__divider" />
 
-      <button className="btn-export" onClick={handleExport} disabled={!hasLoadedPads}>
+      <button
+        className="btn-export"
+        onClick={handleExport}
+        disabled={!hasLoadedPads}
+        data-tour="transport-export"
+      >
         Export
       </button>
     </div>

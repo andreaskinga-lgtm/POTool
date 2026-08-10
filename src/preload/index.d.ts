@@ -1,3 +1,10 @@
+export type TourId = 'general' | 'import' | 'padEditing'
+
+export interface TutorialState {
+  disabled: boolean
+  seen: Record<TourId, boolean>
+}
+
 declare global {
   interface Window {
     api: {
@@ -14,6 +21,15 @@ declare global {
         projectJson: string,
         filesToCopy: { src: string; dest: string }[]
       ) => Promise<boolean>
+      platform: 'win32' | 'darwin' | 'linux'
+      windowMinimize: () => Promise<void>
+      windowMaximize: () => Promise<void>
+      windowClose: () => Promise<void>
+      windowIsMaximized: () => Promise<boolean>
+      getTutorialState: () => Promise<TutorialState>
+      markTutorialSeen: (id: TourId) => Promise<TutorialState>
+      setTutorialsDisabled: (disabled: boolean) => Promise<TutorialState>
+      resetTutorials: () => Promise<TutorialState>
       onMenuEvent: (channel: string, callback: () => void) => () => void
     }
   }

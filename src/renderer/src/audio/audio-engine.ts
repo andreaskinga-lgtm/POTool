@@ -37,13 +37,14 @@ export async function getOutputDevices(): Promise<MediaDeviceInfo[]> {
   return devices.filter((d) => d.kind === 'audiooutput')
 }
 
-export function playBuffer(
+export async function playBuffer(
   buffer: AudioBuffer,
   inPoint: number,
   outPoint: number,
   volume = 1.0,
-  lofi = false
-): void {
+  lofi = false,
+  speed = 1.0
+): Promise<void> {
   stopPlayback()
   const ctx = getAudioContext()
   const trimmed = trimBuffer(buffer, inPoint, outPoint)
@@ -55,6 +56,7 @@ export function playBuffer(
 
     const source = ctx.createBufferSource()
     source.buffer = buf
+    source.playbackRate.value = speed
     source.connect(gainNode)
     source.start(0)
 
@@ -68,7 +70,7 @@ export function playBuffer(
   }
 
   if (lofi) {
-    applyLofi(trimmed).then(scheduleSource)
+    await applyLofi(trimmed).then(scheduleSource)
   } else {
     scheduleSource(trimmed)
   }
@@ -129,6 +131,7 @@ export async function playSequence(
 
     const source = ctx.createBufferSource()
     source.buffer = buffer
+    source.playbackRate.value = pad.speed ?? 1.0
     source.connect(gainNode)
     source.start(nextTime)
     scheduledSources.push({ source, gain: gainNode })
@@ -141,7 +144,7 @@ export async function playSequence(
       padHighlightTimers.push(window.setTimeout(() => cb(padIndex), padStartDelay))
     }
 
-    nextTime += buffer.duration
+    nextTime += buffer.duration / (pad.speed ?? 1.0)
   }
 
   // Record playback timing for cursor animation

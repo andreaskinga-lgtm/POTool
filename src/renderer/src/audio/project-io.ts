@@ -72,7 +72,8 @@ export async function saveProject(
         inPoint: 0,
         outPoint: sliced.length,
         localFile,
-        volume: pad.volume ?? 1.0
+        volume: pad.volume ?? 1.0,
+        speed: pad.speed ?? 1.0
       })
       continue
     }
@@ -84,7 +85,8 @@ export async function saveProject(
       inPoint: pad.inPoint,
       outPoint: pad.outPoint,
       localFile,
-      volume: pad.volume ?? 1.0
+      volume: pad.volume ?? 1.0,
+      speed: pad.speed ?? 1.0
     })
 
     if (!seenDests.has(localFile)) {
@@ -165,7 +167,8 @@ export async function loadProject(
       audioBuffer,
       inPoint: padData.inPoint,
       outPoint: padData.outPoint,
-      volume: padData.volume ?? 1.0
+      volume: padData.volume ?? 1.0,
+      speed: padData.speed ?? 1.0
     }
   }
 
