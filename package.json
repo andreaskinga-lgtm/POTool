@@ -1,6 +1,6 @@
 {
   "name": "potool",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Desktop sample-pack editor for the Teenage Engineering Pocket Operator",
   "main": "./out/main/index.js",
   "author": {
