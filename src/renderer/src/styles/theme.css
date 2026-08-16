@@ -237,6 +237,17 @@ button:disabled {
   box-shadow: 0 0 8px var(--color-accent-glow);
 }
 
+/* Always suppress the native focus ring. Buttons keep focus after a mouse
+   click, and pressing one of the pad keyboard shortcuts afterwards makes the
+   browser re-evaluate :focus-visible on the still-focused button, drawing an
+   extra outline outside the app's own orange selection ring. Pad selection
+   already has its own clear visual treatment (pad--selected), so no
+   focus-visible fallback is needed here. */
+.pad:focus,
+.pad:focus-visible {
+  outline: none;
+}
+
 .pad--loaded {
   background: var(--color-pad-loaded);
   border-color: var(--color-surface-light);
@@ -560,6 +571,40 @@ button:disabled {
   align-items: center;
 }
 
+.waveform-editor__multi-message {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-dim);
+  padding: 32px 0;
+}
+
+.waveform-editor__value-input {
+  width: 40px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  padding: 1px 4px;
+  text-align: right;
+}
+
+.waveform-editor__value-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.waveform-editor__value-input--speed {
+  width: 48px;
+}
+
 .sequence-view__pads-info {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -613,10 +658,38 @@ button:disabled {
 
 .import-view__toolbar {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
   flex-shrink: 0;
+}
+
+.import-view__toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.import-view__toolbar-row--right {
+  justify-content: flex-end;
+}
+
+.import-view__toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.import-view__toolbar-group:first-child {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.import-view__toolbar-group--right {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .import-view__wavesurfer {
@@ -655,15 +728,26 @@ button:disabled {
 .import-view__slider {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-size: 11px;
   font-family: var(--font-mono);
   color: var(--color-text-dim);
 }
 
 .import-view__slider input[type='range'] {
-  width: 80px;
+  width: 50px;
   accent-color: var(--color-accent);
+}
+
+.import-view__slider--grow {
+  flex: 1 1 0%;
+  min-width: 60px;
+}
+
+.import-view__slider--grow input[type='range'] {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 40px;
 }
 
 .import-view__slider input[type='number'] {
@@ -718,8 +802,15 @@ button:disabled {
 .tour-overlay__catcher {
   position: fixed;
   inset: 0;
-  background: rgba(10, 10, 10, 0.55);
+  /* Dimming itself is handled entirely by .tour-spotlight's box-shadow, which leaves the
+   *  spotlighted rect uncovered/bright. This layer only exists to swallow clicks on the rest
+   *  of the interface (or to dim everything when a step has no target). */
+  background: transparent;
   pointer-events: auto;
+}
+
+.tour-overlay__catcher--dim-all {
+  background: rgba(10, 10, 10, 0.55);
 }
 
 .tour-spotlight {

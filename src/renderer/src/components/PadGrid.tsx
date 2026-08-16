@@ -52,9 +52,11 @@ const PAD_KEY_LABELS: string[] = [
 
 export function PadGrid(): React.JSX.Element {
   const pads = useProjectStore((s) => s.pads)
-  const selectedPadIndex = useProjectStore((s) => s.selectedPadIndex)
+  const selectedPadIndices = useProjectStore((s) => s.selectedPadIndices)
   const currentPlayingPad = useProjectStore((s) => s.currentPlayingPad)
   const selectPad = useProjectStore((s) => s.selectPad)
+  const togglePadSelection = useProjectStore((s) => s.togglePadSelection)
+  const selectPadRange = useProjectStore((s) => s.selectPadRange)
   const setImportMode = useProjectStore((s) => s.setImportMode)
   const setPad = useProjectStore((s) => s.setPad)
   const removePad = useProjectStore((s) => s.removePad)
@@ -65,6 +67,12 @@ export function PadGrid(): React.JSX.Element {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [dropMenu, setDropMenu] = useState<PadDropMenu | null>(null)
 
+  // Fixed range-select base for Shift-click, à la Finder. Only moves on a
+  // plain click or a Cmd/Ctrl toggle click — never on Shift-click itself.
+  const rangeAnchorRef = useRef<number | null>(null)
+
+  // Plain click (and keyboard triggers): play the pad and collapse selection
+  // to just this one, replacing any active multi-selection.
   const handlePadClick = useCallback(
     (index: number): void => {
       const pad = pads[index]
@@ -78,11 +86,43 @@ export function PadGrid(): React.JSX.Element {
           pad.speed ?? 1.0
         )
         selectPad(index)
+        rangeAnchorRef.current = index
       } else {
         setImportMode('single', index)
       }
     },
     [pads, selectPad, setImportMode, lofiEnabled]
+  )
+
+  // Mouse click on a pad button — dispatches to plain/Cmd-Ctrl/Shift handling
+  // based on modifier keys. Empty pads can never join a multi-selection: a
+  // Cmd/Ctrl-click on one is a no-op, while a Shift-click still range-selects
+  // positionally (loaded pads within the range get selected, the empty
+  // endpoint itself is simply skipped).
+  const handlePadMouseClick = useCallback(
+    (e: React.MouseEvent, index: number): void => {
+      const pad = pads[index]
+
+      if (e.shiftKey) {
+        // Shift-click: range-select from the fixed anchor to this pad.
+        // Doesn't play audio and doesn't move the anchor.
+        const anchor = rangeAnchorRef.current ?? index
+        selectPadRange(anchor, index)
+        return
+      }
+
+      if (e.metaKey || e.ctrlKey) {
+        // Cmd (Mac) / Ctrl (Windows) click: toggle this pad in/out of the
+        // multi-selection. Doesn't play audio; becomes the new range anchor.
+        // No-op for empty pads (togglePadSelection ignores them).
+        if (pad) rangeAnchorRef.current = index
+        togglePadSelection(index)
+        return
+      }
+
+      handlePadClick(index)
+    },
+    [pads, handlePadClick, selectPadRange, togglePadSelection]
   )
 
   const handleDragStart = (e: React.DragEvent, index: number): void => {
@@ -149,7 +189,7 @@ export function PadGrid(): React.JSX.Element {
     <div className="pad-grid-wrapper" onClick={() => selectPad(null)}>
       <div className="pad-grid" data-tour="pad-grid">
         {pads.map((pad, index) => {
-          const isSelected = selectedPadIndex === index
+          const isSelected = selectedPadIndices.includes(index)
           const isPlaying = currentPlayingPad === index
           const isDragging = dragSourceIndex === index
           const isDragOverEmpty = dragOverIndex === index && !pad
@@ -170,7 +210,7 @@ export function PadGrid(): React.JSX.Element {
               draggable={!!pad}
               onClick={(e) => {
                 e.stopPropagation()
-                handlePadClick(index)
+                handlePadMouseClick(e, index)
               }}
               onDragStart={(e) => handleDragStart(e, index)}
               onDragOver={(e) => handleDragOver(e, index)}

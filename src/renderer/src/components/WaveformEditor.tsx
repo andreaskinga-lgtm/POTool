@@ -13,25 +13,36 @@ export function WaveformEditor(): React.JSX.Element {
   const [verticalGain, setVerticalGain] = useState(1)
   const [volumePct, setVolumePct] = useState(100)
   const [speedPct, setSpeedPct] = useState(100)
+  const [volumeInput, setVolumeInput] = useState('100')
+  const [speedInput, setSpeedInput] = useState('1.00')
+  const volumeInputFocused = useRef(false)
+  const speedInputFocused = useRef(false)
 
   const selectedPadIndex = useProjectStore((s) => s.selectedPadIndex)
+  const selectedPadIndices = useProjectStore((s) => s.selectedPadIndices)
   const pads = useProjectStore((s) => s.pads)
   const updateSlicePoints = useProjectStore((s) => s.updateSlicePoints)
   const updatePadVolume = useProjectStore((s) => s.updatePadVolume)
   const updatePadSpeed = useProjectStore((s) => s.updatePadSpeed)
+  const updatePadsVolume = useProjectStore((s) => s.updatePadsVolume)
+  const updatePadsSpeed = useProjectStore((s) => s.updatePadsSpeed)
   const removePad = useProjectStore((s) => s.removePad)
 
   const pad = selectedPadIndex !== null ? pads[selectedPadIndex] : null
+  const isMultiSelect = selectedPadIndices.length > 1
 
   const { wavesurferRef, handleZoomIn, handleZoomOut, handleZoomReset } = useWaveformCanvas(
     containerRef,
-    pad?.audioBuffer ?? null,
+    isMultiSelect ? null : (pad?.audioBuffer ?? null),
     {
-      height: 256,
-      resetKey: selectedPadIndex,
+      // Slightly reduced from the original 256px so the new editable
+      // volume/speed inputs don't crowd out the horizontal scrollbar that
+      // renders beneath the waveform within the panel's fixed height.
+      height: 254,
+      resetKey: `${selectedPadIndex}-${isMultiSelect}`,
 
       onReady(ws, regions) {
-        if (!pad) return
+        if (!pad || isMultiSelect) return
         const sampleRate = pad.audioBuffer.sampleRate
         const inTime = pad.inPoint / sampleRate
         const outTime = pad.outPoint / sampleRate
@@ -57,7 +68,7 @@ export function WaveformEditor(): React.JSX.Element {
       },
 
       onRegionUpdated(region) {
-        if (selectedPadIndex === null || !pad) return
+        if (selectedPadIndex === null || !pad || isMultiSelect) return
         const sampleRate = pad.audioBuffer.sampleRate
         const data = pad.audioBuffer.getChannelData(0)
 
@@ -87,17 +98,21 @@ export function WaveformEditor(): React.JSX.Element {
     setVerticalGain(1)
   }, [selectedPadIndex])
 
-  // Sync volume slider to the selected pad's stored volume
+  // Sync volume slider/input to the selected (anchor) pad's stored volume
   useEffect(() => {
     const p = selectedPadIndex !== null ? pads[selectedPadIndex] : null
-    setVolumePct(Math.round((p?.volume ?? 1.0) * 100))
-  }, [selectedPadIndex])
+    const pct = Math.round((p?.volume ?? 1.0) * 100)
+    setVolumePct(pct)
+    if (!volumeInputFocused.current) setVolumeInput(String(pct))
+  }, [selectedPadIndex, pads])
 
-  // Sync speed slider to the selected pad's stored speed
+  // Sync speed slider/input to the selected (anchor) pad's stored speed
   useEffect(() => {
     const p = selectedPadIndex !== null ? pads[selectedPadIndex] : null
-    setSpeedPct(Math.round((p?.speed ?? 1.0) * 100))
-  }, [selectedPadIndex])
+    const pct = Math.round((p?.speed ?? 1.0) * 100)
+    setSpeedPct(pct)
+    if (!speedInputFocused.current) setSpeedInput((pct / 100).toFixed(2))
+  }, [selectedPadIndex, pads])
 
   // Trigger the pad-editing tutorial tour once a pad is actually selected/rendered here
   useEffect(() => {
@@ -107,65 +122,121 @@ export function WaveformEditor(): React.JSX.Element {
 
   if (!pad || selectedPadIndex === null) return <div />
 
+  const applyVolume = (pct: number): void => {
+    if (isMultiSelect) {
+      updatePadsVolume(selectedPadIndices, pct / 100)
+    } else if (selectedPadIndex !== null) {
+      updatePadVolume(selectedPadIndex, pct / 100)
+    }
+  }
+
+  const applySpeed = (pct: number): void => {
+    if (isMultiSelect) {
+      updatePadsSpeed(selectedPadIndices, pct / 100)
+    } else if (selectedPadIndex !== null) {
+      updatePadSpeed(selectedPadIndex, pct / 100)
+    }
+  }
+
+  const commitVolumeInput = (): void => {
+    const parsed = Number(volumeInput.trim())
+    if (volumeInput.trim() === '' || !Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+      // Out of bounds / invalid — silently revert to the value before editing
+      setVolumeInput(String(volumePct))
+      return
+    }
+    const rounded = Math.round(parsed)
+    setVolumePct(rounded)
+    setVolumeInput(String(rounded))
+    applyVolume(rounded)
+  }
+
+  const commitSpeedInput = (): void => {
+    const parsed = Number(speedInput.trim())
+    if (speedInput.trim() === '' || !Number.isFinite(parsed) || parsed < 0.01 || parsed > 4.0) {
+      // Out of bounds / invalid — silently revert to the value before editing
+      setSpeedInput((speedPct / 100).toFixed(2))
+      return
+    }
+    let pct = Math.round(parsed * 100)
+    // Soft snap to 100 (1x), matching the slider's behavior
+    if (Math.abs(pct - 100) <= 2) pct = 100
+    setSpeedPct(pct)
+    setSpeedInput((pct / 100).toFixed(2))
+    applySpeed(pct)
+  }
+
   const sliceDuration = (pad.outPoint - pad.inPoint) / pad.audioBuffer.sampleRate
 
   return (
     <div className="waveform-editor">
-      <div className="waveform-editor__controls">
-        <span
-          style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-dim)' }}
-        >
-          Pad {selectedPadIndex + 1} — {pad.fileName} — {sliceDuration.toFixed(2)}s
-        </span>
-        <div style={{ flex: 1 }} />
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            fontSize: 11,
-            color: 'var(--color-text-dim)'
-          }}
-          title="Vertical gain — amplifies waveform display to reveal quiet transients"
-          data-tour="editor-gain"
-        >
-          Gain
-          <input
-            type="range"
-            min={1}
-            max={20}
-            step={0.5}
-            value={verticalGain}
-            onChange={(e) => setVerticalGain(parseFloat(e.target.value))}
-            style={{ width: 60 }}
+      {isMultiSelect ? (
+        <div className="waveform-editor__multi-message">
+          {selectedPadIndices.length} Pads Selected
+        </div>
+      ) : (
+        <>
+          <div className="waveform-editor__controls">
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                color: 'var(--color-text-dim)'
+              }}
+            >
+              Pad {selectedPadIndex + 1} — {pad.fileName} — {sliceDuration.toFixed(2)}s
+            </span>
+            <div style={{ flex: 1 }} />
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 11,
+                color: 'var(--color-text-dim)'
+              }}
+              title="Vertical gain — amplifies waveform display to reveal quiet transients"
+              data-tour="editor-gain"
+            >
+              Gain
+              <input
+                type="range"
+                min={1}
+                max={20}
+                step={0.5}
+                value={verticalGain}
+                onChange={(e) => setVerticalGain(parseFloat(e.target.value))}
+                style={{ width: 60 }}
+              />
+              <span style={{ fontFamily: 'var(--font-mono)', minWidth: 28 }}>
+                {verticalGain.toFixed(1)}x
+              </span>
+            </label>
+            <span
+              data-tour="editor-zoom"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <ZoomControls
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                onZoomReset={handleZoomReset}
+              />
+            </span>
+            <button
+              className="btn-delete"
+              onClick={() => removePad(selectedPadIndex)}
+              data-tour="editor-delete"
+            >
+              Delete
+            </button>
+          </div>
+          <div
+            className="waveform-editor__wavesurfer"
+            ref={containerRef}
+            data-tour="editor-wavesurfer"
           />
-          <span style={{ fontFamily: 'var(--font-mono)', minWidth: 28 }}>
-            {verticalGain.toFixed(1)}x
-          </span>
-        </label>
-        <span
-          data-tour="editor-zoom"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-        >
-          <ZoomControls
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onZoomReset={handleZoomReset}
-          />
-        </span>
-        <button
-          className="btn-delete"
-          onClick={() => removePad(selectedPadIndex)}
-          data-tour="editor-delete"
-        >
-          Delete
-        </button>
-      </div>
-      <div
-        className="waveform-editor__wavesurfer"
-        ref={containerRef}
-        data-tour="editor-wavesurfer"
-      />
+        </>
+      )}
       <div className="waveform-editor__controls-row">
         <div className="waveform-editor__volume" data-tour="editor-volume">
           <label
@@ -187,19 +258,38 @@ export function WaveformEditor(): React.JSX.Element {
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10)
                 setVolumePct(val)
-                if (selectedPadIndex !== null) {
-                  updatePadVolume(selectedPadIndex, val / 100)
-                }
+                setVolumeInput(String(val))
+                applyVolume(val)
               }}
               onDoubleClick={() => {
                 setVolumePct(100)
-                if (selectedPadIndex !== null) {
-                  updatePadVolume(selectedPadIndex, 1.0)
-                }
+                setVolumeInput('100')
+                applyVolume(100)
               }}
               style={{ width: 120 }}
             />
-            <span style={{ fontFamily: 'var(--font-mono)', minWidth: 36 }}>{volumePct}%</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              className="waveform-editor__value-input"
+              value={volumeInput}
+              onChange={(e) => setVolumeInput(e.target.value)}
+              onFocus={() => {
+                volumeInputFocused.current = true
+              }}
+              onBlur={() => {
+                volumeInputFocused.current = false
+                commitVolumeInput()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+                if (e.key === 'Escape') {
+                  setVolumeInput(String(volumePct))
+                  e.currentTarget.blur()
+                }
+              }}
+            />
+            <span style={{ fontFamily: 'var(--font-mono)' }}>%</span>
           </label>
         </div>
         <div className="waveform-editor__speed" data-tour="editor-speed">
@@ -224,21 +314,38 @@ export function WaveformEditor(): React.JSX.Element {
                 // Soft snap to 100 (1x) when within ±2
                 if (Math.abs(val - 100) <= 2) val = 100
                 setSpeedPct(val)
-                if (selectedPadIndex !== null) {
-                  updatePadSpeed(selectedPadIndex, val / 100)
-                }
+                setSpeedInput((val / 100).toFixed(2))
+                applySpeed(val)
               }}
               onDoubleClick={() => {
                 setSpeedPct(100)
-                if (selectedPadIndex !== null) {
-                  updatePadSpeed(selectedPadIndex, 1.0)
-                }
+                setSpeedInput('1.00')
+                applySpeed(100)
               }}
               style={{ width: 120 }}
             />
-            <span style={{ fontFamily: 'var(--font-mono)', minWidth: 42 }}>
-              {(speedPct / 100).toFixed(2)}x
-            </span>
+            <input
+              type="text"
+              inputMode="decimal"
+              className="waveform-editor__value-input waveform-editor__value-input--speed"
+              value={speedInput}
+              onChange={(e) => setSpeedInput(e.target.value)}
+              onFocus={() => {
+                speedInputFocused.current = true
+              }}
+              onBlur={() => {
+                speedInputFocused.current = false
+                commitSpeedInput()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+                if (e.key === 'Escape') {
+                  setSpeedInput((speedPct / 100).toFixed(2))
+                  e.currentTarget.blur()
+                }
+              }}
+            />
+            <span style={{ fontFamily: 'var(--font-mono)' }}>x</span>
           </label>
         </div>
       </div>

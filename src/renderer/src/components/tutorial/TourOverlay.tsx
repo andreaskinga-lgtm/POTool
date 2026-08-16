@@ -90,13 +90,24 @@ export function TourOverlay(): React.JSX.Element | null {
 
     let rect: DOMRect | null = null
     if (step.target) {
-      const el = document.querySelector(`[data-tour="${step.target}"]`)
-      if (!el) {
-        setSpotlightStyle(null)
-        next()
-        return
+      const targets = Array.isArray(step.target) ? step.target : [step.target]
+      const rects: DOMRect[] = []
+      for (const target of targets) {
+        const el = document.querySelector(`[data-tour="${target}"]`)
+        if (!el) {
+          setSpotlightStyle(null)
+          next()
+          return
+        }
+        rects.push(el.getBoundingClientRect())
       }
-      rect = el.getBoundingClientRect()
+      // Union all target rects into a single bounding box so the spotlight/tooltip covers
+      // every element the step points at (e.g. both the volume and speed controls).
+      const left = Math.min(...rects.map((r) => r.left))
+      const top = Math.min(...rects.map((r) => r.top))
+      const right = Math.max(...rects.map((r) => r.right))
+      const bottom = Math.max(...rects.map((r) => r.bottom))
+      rect = new DOMRect(left, top, right - left, bottom - top)
     }
 
     setSpotlightStyle(
@@ -158,7 +169,9 @@ export function TourOverlay(): React.JSX.Element | null {
 
   return createPortal(
     <div className="tour-overlay">
-      <div className="tour-overlay__catcher" />
+      <div
+        className={`tour-overlay__catcher${spotlightStyle ? '' : ' tour-overlay__catcher--dim-all'}`}
+      />
       {spotlightStyle && <div className="tour-spotlight" style={spotlightStyle} />}
       <div
         ref={tooltipRef}

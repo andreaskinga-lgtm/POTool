@@ -368,6 +368,16 @@ export function ImportView(): React.JSX.Element {
     setSliceRegions(limitedRegions)
   }
 
+  // Single entry point for the combined slice button: prefer embedded OP-1
+  // slice metadata when present, otherwise fall back to transient detection.
+  function handleSlice(): void {
+    if (op1Slices) {
+      handleOp1Slices()
+    } else {
+      handleAutoSlice()
+    }
+  }
+
   function handleConfirmImport(): void {
     if (!audioBuffer || !filePath || sliceRegions.length === 0) return
 
@@ -455,113 +465,110 @@ export function ImportView(): React.JSX.Element {
   return (
     <div className="import-view">
       <div className="import-view__toolbar">
-        {importMode === 'multi' && (
-          <>
-            {op1Slices && (
-              <button
-                className="btn-sm"
-                onClick={handleOp1Slices}
-                title={`${op1Slices.length} slices embedded in file`}
-                data-tour="import-op1-slices"
-              >
-                OP-1 Slices
-              </button>
-            )}
-            <button className="btn-sm" onClick={handleAutoSlice} data-tour="import-autoslice">
-              Auto-Slice
-            </button>
-            <div style={{ display: 'flex', gap: 8 }} data-tour="import-sensitivity">
-              <div className="import-view__slider">
-                <span>Sensitivity</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={sensitivity}
-                  onChange={(e) => setSensitivity(parseFloat(e.target.value))}
-                />
-              </div>
-              <div className="import-view__slider">
-                <span>Slices</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="16"
-                  value={maxSlices}
-                  onChange={(e) =>
-                    setMaxSlices(Math.min(16, Math.max(1, parseInt(e.target.value) || 1)))
+        <div className="import-view__toolbar-row">
+          <div className="import-view__toolbar-group">
+            {importMode === 'multi' && (
+              <>
+                <button
+                  className="btn-sm"
+                  onClick={handleSlice}
+                  title={
+                    op1Slices
+                      ? `${op1Slices.length} slices embedded in file`
+                      : 'Automatically detect transients and slice the file'
                   }
-                />
-              </div>
-            </div>
-          </>
-        )}
-        <div style={{ flex: 1 }} />
-        {importMode === 'multi' && (
+                  data-tour="import-autoslice"
+                >
+                  {op1Slices ? 'OP-1 Slices' : 'Auto Slice'}
+                </button>
+                <div
+                  className="import-view__slider import-view__slider--grow"
+                  data-tour="import-sensitivity"
+                >
+                  <span>Sensitivity</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={sensitivity}
+                    onChange={(e) => setSensitivity(parseFloat(e.target.value))}
+                  />
+                </div>
+                <div className="import-view__slider">
+                  <span>Slices</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="16"
+                    value={maxSlices}
+                    onChange={(e) =>
+                      setMaxSlices(Math.min(16, Math.max(1, parseInt(e.target.value) || 1)))
+                    }
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <div className="import-view__toolbar-group import-view__toolbar-group--right">
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 11,
+                color: 'var(--color-text-dim)'
+              }}
+              title="Vertical gain — amplifies waveform display to reveal quiet transients"
+              data-tour="import-gain"
+            >
+              Gain
+              <input
+                type="range"
+                min={1}
+                max={20}
+                step={0.5}
+                value={verticalGain}
+                onChange={(e) => setVerticalGain(parseFloat(e.target.value))}
+                style={{ width: 60 }}
+              />
+              <span style={{ fontFamily: 'var(--font-mono)', minWidth: 28 }}>
+                {verticalGain.toFixed(1)}x
+              </span>
+            </label>
+            <span
+              data-tour="import-zoom"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <ZoomControls
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                onZoomReset={handleZoomReset}
+              />
+            </span>
+          </div>
+        </div>
+        <div className="import-view__toolbar-row import-view__toolbar-row--right">
           <span
             style={{
               fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              color: 'var(--color-text-dim)',
-              opacity: 0.7
+              fontSize: 11,
+              color: 'var(--color-text-dim)'
             }}
           >
-            {pendingInTime !== null
-              ? 'click to set out · right-click to cancel'
-              : 'dbl-click to add slice'}
+            {sliceRegions.length} slice{sliceRegions.length !== 1 ? 's' : ''}
           </span>
-        )}
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            fontSize: 11,
-            color: 'var(--color-text-dim)'
-          }}
-          title="Vertical gain — amplifies waveform display to reveal quiet transients"
-          data-tour="import-gain"
-        >
-          Gain
-          <input
-            type="range"
-            min={1}
-            max={20}
-            step={0.5}
-            value={verticalGain}
-            onChange={(e) => setVerticalGain(parseFloat(e.target.value))}
-            style={{ width: 60 }}
-          />
-          <span style={{ fontFamily: 'var(--font-mono)', minWidth: 28 }}>
-            {verticalGain.toFixed(1)}x
-          </span>
-        </label>
-        <span
-          data-tour="import-zoom"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-        >
-          <ZoomControls
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onZoomReset={handleZoomReset}
-          />
-        </span>
-        <span
-          style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-dim)' }}
-        >
-          {sliceRegions.length} slice{sliceRegions.length !== 1 ? 's' : ''}
-        </span>
-        <button className="btn-sm" onClick={handleCancel}>
-          Cancel
-        </button>
-        <button
-          className="btn-sm btn-sm--primary"
-          onClick={handleConfirmImport}
-          disabled={sliceRegions.length === 0}
-        >
-          Import
-        </button>
+          <button className="btn-sm" onClick={handleCancel}>
+            Cancel
+          </button>
+          <button
+            className="btn-sm btn-sm--primary"
+            onClick={handleConfirmImport}
+            disabled={sliceRegions.length === 0}
+          >
+            Import
+          </button>
+        </div>
       </div>
       <div
         style={{ position: 'relative', cursor: pendingInTime !== null ? 'crosshair' : 'default' }}

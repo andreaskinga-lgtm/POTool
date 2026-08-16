@@ -3,8 +3,9 @@ import type { TourId } from '../types'
 export type TourPlacement = 'top' | 'bottom' | 'left' | 'right' | 'center'
 
 export interface TourStep {
-  /** data-tour value of the element this step points at; omit for a centered card */
-  target?: string
+  /** data-tour value(s) of the element(s) this step points at; omit for a centered card.
+   *  Pass an array to spotlight/anchor to the union of multiple elements at once. */
+  target?: string | string[]
   title: string
   body: string
   placement?: TourPlacement
@@ -45,20 +46,14 @@ export const TOUR_STEPS: Record<TourId, TourStep[]> = {
   import: [
     {
       target: 'import-autoslice',
-      title: 'Auto-Slice',
-      body: 'Automatically detects transients in the file and slices it into up to 16 regions for you.',
+      title: 'Auto Slice',
+      body: 'Automatically detects transients in the file and slices it into up to 16 regions for you. Some files (like those downloaded from OP1.fun) embed their own slice markers\u2014when detected, this button loads those exact slices instead of guessing, and is labeled "OP-1 Slices".',
       placement: 'bottom'
     },
     {
       target: 'import-sensitivity',
       title: 'Sensitivity & slice count',
-      body: 'Sensitivity controls how aggressively Auto-Slice looks for transients. Slices caps how many regions it will create.',
-      placement: 'bottom'
-    },
-    {
-      target: 'import-op1-slices',
-      title: 'OP-1 embedded slices',
-      body: 'Some files (like those downloaded from OP1.fun) embed their own slice markers. When detected, this button loads those exact slices instead of guessing.',
+      body: 'Sensitivity controls how aggressively Auto Slice looks for transients. Slices caps how many regions it will create.',
       placement: 'bottom'
     },
     {
@@ -100,15 +95,9 @@ export const TOUR_STEPS: Record<TourId, TourStep[]> = {
       placement: 'bottom'
     },
     {
-      target: 'editor-volume',
-      title: 'Volume',
-      body: 'Sets this pad\u2019s playback level. Double-click the slider to reset it to 100%.',
-      placement: 'top'
-    },
-    {
-      target: 'editor-speed',
-      title: 'Speed',
-      body: 'Changes this pad\u2019s playback rate/pitch. Double-click the slider to reset it to 1x.',
+      target: ['editor-volume', 'editor-speed'],
+      title: 'Volume & Speed',
+      body: 'Volume sets this pad\u2019s playback level, and speed changes its playback rate/pitch. Double-click either slider to reset it (100% volume, 1x speed). Multiselect pads in the grid to adjust volume or speed on several pads at once.',
       placement: 'top'
     },
     {

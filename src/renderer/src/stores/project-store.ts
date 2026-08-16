@@ -12,6 +12,10 @@ interface ProjectStore {
   // Pads
   pads: (PadSlice | null)[]
   selectedPadIndex: number | null
+  // All currently multi-selected pads (Cmd/Ctrl-click, Shift-click range).
+  // UI-only, not persisted. When only one pad is selected this mirrors
+  // [selectedPadIndex]; empty when nothing is selected.
+  selectedPadIndices: number[]
 
   // UI state
   panelView: PanelView
@@ -30,9 +34,13 @@ interface ProjectStore {
   updateSlicePoints: (index: number, inPoint: number, outPoint: number) => void
   updatePadVolume: (index: number, volume: number) => void
   updatePadSpeed: (index: number, speed: number) => void
+  updatePadsVolume: (indices: number[], volume: number) => void
+  updatePadsSpeed: (indices: number[], speed: number) => void
   removePad: (index: number) => void
   swapPads: (indexA: number, indexB: number) => void
   selectPad: (index: number | null) => void
+  togglePadSelection: (index: number) => void
+  selectPadRange: (fromIndex: number, toIndex: number) => void
   setPanelView: (view: PanelView) => void
   setPlaybackState: (state: PlaybackState) => void
   setCurrentPlayingPad: (index: number | null) => void
@@ -52,6 +60,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   pads: Array(NUM_PADS).fill(null),
   selectedPadIndex: null,
+  selectedPadIndices: [],
 
   panelView: 'overview',
   playbackState: 'idle',
@@ -109,11 +118,31 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       return { pads }
     }),
 
+  updatePadsVolume: (indices, volume) =>
+    set((state) => {
+      const pads = [...state.pads]
+      for (const index of indices) {
+        const pad = pads[index]
+        if (pad) pads[index] = { ...pad, volume }
+      }
+      return { pads }
+    }),
+
+  updatePadsSpeed: (indices, speed) =>
+    set((state) => {
+      const pads = [...state.pads]
+      for (const index of indices) {
+        const pad = pads[index]
+        if (pad) pads[index] = { ...pad, speed }
+      }
+      return { pads }
+    }),
+
   removePad: (index) =>
     set((state) => {
       const pads = [...state.pads]
       pads[index] = null
-      return { pads, selectedPadIndex: null, panelView: 'overview' }
+      return { pads, selectedPadIndex: null, selectedPadIndices: [], panelView: 'overview' }
     }),
 
   swapPads: (indexA, indexB) =>
@@ -125,11 +154,53 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       return { pads }
     }),
 
+  // Plain (unmodified) click/keyboard-trigger selection — always collapses
+  // to a single pad, replacing any existing multi-selection.
   selectPad: (index) =>
     set(() => ({
       selectedPadIndex: index,
+      selectedPadIndices: index !== null ? [index] : [],
       panelView: index !== null ? 'editor' : 'overview'
     })),
+
+  // Cmd/Ctrl-click — toggles a single (loaded) pad in/out of the current
+  // multi-selection without affecting playback.
+  togglePadSelection: (index) =>
+    set((state) => {
+      if (!state.pads[index]) return state
+      const selection = new Set(state.selectedPadIndices)
+      if (selection.has(index)) {
+        selection.delete(index)
+      } else {
+        selection.add(index)
+      }
+      const indices = Array.from(selection).sort((a, b) => a - b)
+      const stillSelected = indices.includes(index)
+      return {
+        selectedPadIndices: indices,
+        selectedPadIndex: stillSelected ? index : (indices[indices.length - 1] ?? null),
+        panelView: indices.length > 0 ? 'editor' : 'overview'
+      }
+    }),
+
+  // Shift-click — selects the contiguous range of loaded pads between
+  // fromIndex (the fixed range anchor) and toIndex, replacing the current
+  // selection. Empty pads within the range are skipped. Does not move the
+  // range anchor (callers keep tracking their own anchor for future ranges).
+  selectPadRange: (fromIndex, toIndex) =>
+    set((state) => {
+      const lo = Math.min(fromIndex, toIndex)
+      const hi = Math.max(fromIndex, toIndex)
+      const indices: number[] = []
+      for (let i = lo; i <= hi; i++) {
+        if (state.pads[i]) indices.push(i)
+      }
+      return {
+        selectedPadIndices: indices,
+        selectedPadIndex: indices.length > 0 ? toIndex : null,
+        panelView: indices.length > 0 ? 'editor' : 'overview'
+      }
+    }),
 
   setPanelView: (view) => set({ panelView: view }),
   setPlaybackState: (state) => set({ playbackState: state }),
@@ -151,6 +222,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({
       pads: Array(NUM_PADS).fill(null),
       selectedPadIndex: null,
+      selectedPadIndices: [],
       panelView: 'overview',
       playbackState: 'idle',
       currentPlayingPad: null,
@@ -160,5 +232,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       projectPath: null
     }),
 
-  loadPads: (pads) => set({ pads })
+  loadPads: (pads) =>
+    set({ pads, selectedPadIndex: null, selectedPadIndices: [], panelView: 'overview' })
 }))
